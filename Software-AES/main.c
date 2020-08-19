@@ -2,18 +2,18 @@
 //  Copyright © 2019 Akshay Trikha. All rights reserved.
 
 /*
-C implementation of Advanced Encryption Standard (AES) encryption algorithm
-128 bit state and cipher key
+C implementation of Advanced Encryption Standard (AES) encryption algorithm with 128 bit state and cipher key
 Specitification located at https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197.pdf
 */
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 
 #define STATE_SIZE 16
-
 typedef uint8_t state[4][4];
+struct timespec start, end;
 
 const uint8_t sBoxNumbers[256] = {
     //0     1    2      3     4    5     6     7      8    9     A      B    C     D     E     F
@@ -63,6 +63,7 @@ void printState(state inputState) {
         printf("%x %x %x %x ", inputState[0][i], inputState[1][i], inputState[2][i], inputState[3][i]);
         printf("\n");
     }
+    printf("\n");
 }
 
 // sets state1 = state1 ^ state2
@@ -260,10 +261,6 @@ void keyExpansion(state inputKey, uint8_t round) {
     
     // col4 = old col4 XOR col3
     wordXOR(col4, col3);
-    
-//    for (size_t i = 0; i < 4; ++i) {
-//        printf("%x\n", col3[i]);
-//    }
 
     // copy results into key
     memcpy(key1Pointer, col1Pointer, 4*sizeof(inputKey[0][0]));
@@ -272,14 +269,13 @@ void keyExpansion(state inputKey, uint8_t round) {
     memcpy(key4Pointer, col4Pointer, 4*sizeof(inputKey[0][0]));
 }
 
-
 //---------- Main ----------
 int main(int argc, const char * argv[]) {
-//    state sub = {{0x19, 0x3d, 0xe3, 0xbe}, {0xa0, 0xf4, 0xe2, 0x2b}, {0x9a, 0xc6, 0x8d, 0x2a}, {0xe9, 0xf8, 0x48, 0x08}};
-//    state xor1 = {{0x04, 0x66, 0x81, 0xe5}, {0xe0, 0xcb, 0x19, 0x9a}, {0x48, 0xf8, 0xd3, 0x7a}, {0x28, 0x06, 0x26, 0x4c}};
-//    state xor2 = {{0xa0, 0xfa, 0xfe, 0x17}, {0x88, 0x54, 0x2c, 0xb1}, {0x23, 0xa3, 0x39, 0x39}, {0x2a, 0x6c, 0x76, 0x05}};
-//    state shift = {{0xd4, 0x27, 0x11, 0xae}, {0xe0, 0xbf, 0x98, 0xf1}, {0xb8, 0xb4, 0x5d, 0xe5}, {0x1e, 0x41, 0x52, 0x30}};
-//    state mult = {{0xd4, 0xbf, 0x5d, 0x30},{0xe0, 0xb4, 0x52, 0xae}, {0xb8, 0x41, 0x11, 0xf1}, {0x1e, 0x27, 0x98, 0xe5}};
+    printf("plaintext input\n");
+    printState(plaintext);
+
+    // start stopwatch
+    clock_gettime(CLOCK_MONOTONIC_RAW, &start);
     
     // round 1
     // plaintext = plaintext XOR first round key
@@ -315,7 +311,16 @@ int main(int argc, const char * argv[]) {
 
     // state = state XOR key
     stateXOR(plaintext, key);
-
+    
+    // stop stopwatch
+    clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+    
+    // combine time in seconds and nanoseconds (in case of clock wrap around)
+    uint64_t delta_us = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec);
+    
+    printf("algorithm ran in %llu nanoseconds\n\n", delta_us);
+    
+    printf("enxrypted output\n");
     printState(plaintext);
     
     return 0;
