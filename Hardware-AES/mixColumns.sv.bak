@@ -1,0 +1,7 @@
+// mixColumns performs second transformation of encryption
+module mixColumns(input  logic [127:0]noMixColumns,
+                  output logic [127:0]mixColumns);
+
+      // mixColumns logic
+
+endmodule

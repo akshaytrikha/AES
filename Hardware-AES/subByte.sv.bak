@@ -1,0 +1,7 @@
+// subByte performs first transformation of encryption
+module subByte(input  logic [127:0]noSubByte,
+               output logic [127:0]subByte);
+
+      // subByte logic
+
+endmodule

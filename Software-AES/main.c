@@ -320,7 +320,7 @@ int main(int argc, const char * argv[]) {
     
     printf("algorithm ran in %llu nanoseconds\n\n", delta_us);
     
-    printf("enxrypted output\n");
+    printf("encrypted output\n");
     printState(plaintext);
     
     return 0;

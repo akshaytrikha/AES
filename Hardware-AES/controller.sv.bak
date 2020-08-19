@@ -1,0 +1,42 @@
+// controller sends out enable signals for control path
+module controller(input  logic slowClock,
+                  input  logic load,
+                  output logic cypherTextOn,
+                  output logic subByteOn,
+                  output logic shiftRowsOn,
+                  output logic mixColumnsOn,
+                  output logic keyExpansionOn,
+                  output logic addRoundKeyOn
+                  output logic done);
+
+        // FSM for AES rounds
+      typedef enum logic [10:0] {round1, round2, round3, round4, round5, round6, round7, round8, round9, round10, round11} statetype;
+      statetype round, nextRound;
+
+      // state register
+	    // flip flop that updates state on rising clock edge
+	    always_ff @(posedge clk, posedge reset)
+          // reset on load
+		      if (load) round <= round1;
+		      else round <= nextRound;
+
+      // next state logic
+    	always_comb
+    	    case(round)
+        			round1:    nextRound <= round2;
+              round2:    nextRound <= round3;
+              round3:    nextRound <= round4;
+              round4:    nextRound <= round5;
+              round5:    nextRound <= round6;
+              round6:    nextRound <= round7;
+              round7:    nextRound <= round8;
+              round8:    nextRound <= round9;
+              round9:    nextRound <= round10;
+              round10:   nextRound <= round11;
+
+              default:   nextRound <= round1;
+          endcase
+
+      assign done = (round == round11);
+
+endmodule

@@ -1,0 +1,5 @@
+// keyExpansion routine to generate key schedule
+module keyExpansion(input  logic[x:0]key,
+                    output logic[x:0]oldKey);
+
+endmodule

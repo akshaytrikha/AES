@@ -1,0 +1,7 @@
+// shiftRows performs second transformation of encryption
+module shiftRows(input  logic [127:0]noShiftRows,
+                 output logic [127:0]shiftRows);
+
+      // shiftRows logic
+
+endmodule
