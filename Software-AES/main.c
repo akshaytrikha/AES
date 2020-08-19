@@ -2,7 +2,7 @@
 //  Copyright © 2019 Akshay Trikha. All rights reserved.
 
 /*
-Python implementation of Advanced Encryption Standard (AES) encryption algorithm
+C implementation of Advanced Encryption Standard (AES) encryption algorithm
 128 bit state and cipher key
 Specitification located at https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197.pdf
 */
@@ -35,6 +35,19 @@ const uint8_t sBoxNumbers[256] = {
     0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16
 };
 
+const uint8_t Rcon[10][4] = {
+    {0x01, 0x00, 0x00, 0x00}, // round 0
+    {0x02, 0x00, 0x00, 0x00},
+    {0x04, 0x00, 0x00, 0x00},
+    {0x08, 0x00, 0x00, 0x00},
+    {0x10, 0x00, 0x00, 0x00},
+    {0x20, 0x00, 0x00, 0x00},
+    {0x40, 0x00, 0x00, 0x00},
+    {0x80, 0x00, 0x00, 0x00},
+    {0x1B, 0x00, 0x00, 0x00},
+    {0x36, 0x00, 0x00, 0x00}  // round 9
+};
+
 // Test cases
 state key = {{0x2B, 0x7E, 0x15, 0x16}, {0x28, 0xAE, 0xD2, 0xA6}, {0xAB, 0xF7, 0x15, 0x88}, {0x09, 0xCF, 0x4F, 0x3C}};
 
@@ -59,6 +72,14 @@ void stateXOR(state state1, state state2) {
         for (size_t j = 0; j < STATE_SIZE / 4; ++j) {
             state1[i][j] ^= state2[i][j];
         }
+    }
+}
+
+// sets word1 = word1 ^ word2
+void wordXOR(uint8_t* word1, uint8_t* word2) {
+    // loop through words
+    for (size_t i = 0; i < STATE_SIZE / 4; ++i) {
+        word1[i] ^= word2[i];
     }
 }
 
@@ -111,7 +132,7 @@ void shiftRows(state inputState) {
 // helper function for mixColumns
 // performs Galois field operations on bytes in a column
 // taken from https://en.wikipedia.org/wiki/Rijndael_MixColumns
-void gmix_columns(uint8_t* r) {
+void gmix_columns(uint8_t* column) {
     uint8_t a[4];
     uint8_t b[4];
     uint8_t c;
@@ -123,22 +144,23 @@ void gmix_columns(uint8_t* r) {
      * a[n] ^ b[n] is element n multiplied by 3 in Rijndael's Galois field */
     
     for (c = 0; c < 4; c++) {
-        a[c] = r[c];
+        a[c] = column[c];
         /* h is 0xff if the high bit of r[c] is set, 0 otherwise */
-        h = (unsigned char)((signed char)r[c] >> 7); /* arithmetic right shift, thus shifting in either zeros or ones */
-        b[c] = r[c] << 1; /* implicitly removes high bit because b[c] is an 8-bit char, so we xor by 0x1b and not 0x11b in the next line */
+        h = (unsigned char)((signed char)column[c] >> 7); /* arithmetic right shift, thus shifting in either zeros or ones */
+        b[c] = column[c] << 1; /* implicitly removes high bit because b[c] is an 8-bit char, so we xor by 0x1b and not 0x11b in the next line */
         b[c] ^= 0x1B & h; /* Rijndael's Galois field */
         
     }
     
-    r[0] = b[0] ^ a[3] ^ a[2] ^ b[1] ^ a[1]; /* 2 * a0 + a3 + a2 + 3 * a1 */
-    r[1] = b[1] ^ a[0] ^ a[3] ^ b[2] ^ a[2]; /* 2 * a1 + a0 + a3 + 3 * a2 */
-    r[2] = b[2] ^ a[1] ^ a[0] ^ b[3] ^ a[3]; /* 2 * a2 + a1 + a0 + 3 * a3 */
-    r[3] = b[3] ^ a[2] ^ a[1] ^ b[0] ^ a[0]; /* 2 * a3 + a2 + a1 + 3 * a0 */
+    column[0] = b[0] ^ a[3] ^ a[2] ^ b[1] ^ a[1]; /* 2 * a0 + a3 + a2 + 3 * a1 */
+    column[1] = b[1] ^ a[0] ^ a[3] ^ b[2] ^ a[2]; /* 2 * a1 + a0 + a3 + 3 * a2 */
+    column[2] = b[2] ^ a[1] ^ a[0] ^ b[3] ^ a[3]; /* 2 * a2 + a1 + a0 + 3 * a3 */
+    column[3] = b[3] ^ a[2] ^ a[1] ^ b[0] ^ a[0]; /* 2 * a3 + a2 + a1 + 3 * a0 */
 }
 
 // performs Galois field operations on all columns in a state
 void mixColumns(state inputState) {
+    // get pointers
     uint8_t col1[4], col2[4], col3[4], col4[4];
     uint8_t* col1Pointer = col1;
     uint8_t* col2Pointer = col2;
@@ -149,20 +171,105 @@ void mixColumns(state inputState) {
     uint8_t* state3Pointer = *(inputState + 2);
     uint8_t* state4Pointer = *(inputState + 3);
     
+    // copy columns into arrays
     memcpy(col1Pointer, state1Pointer, 4*sizeof(inputState[0][0]));
     memcpy(col2Pointer, state2Pointer, 4*sizeof(inputState[0][0]));
     memcpy(col3Pointer, state3Pointer, 4*sizeof(inputState[0][0]));
     memcpy(col4Pointer, state4Pointer, 4*sizeof(inputState[0][0]));
     
+    // apply mix columns tranformation to each each column
     gmix_columns(col1Pointer);
     gmix_columns(col2Pointer);
     gmix_columns(col3Pointer);
     gmix_columns(col4Pointer);
     
+    // copy results into state
     memcpy(state1Pointer, col1Pointer, 4*sizeof(inputState[0][0]));
     memcpy(state2Pointer, col2Pointer, 4*sizeof(inputState[0][0]));
     memcpy(state3Pointer, col3Pointer, 4*sizeof(inputState[0][0]));
     memcpy(state4Pointer, col4Pointer, 4*sizeof(inputState[0][0]));
+}
+
+// Key Expansion 1
+// column [a0,a1,a2,a3] --> [a1,a2,a3,a0]
+void rotateWord(uint8_t* word) {
+    uint8_t a0 = word[0];
+    for(size_t i = 0; i < 3; ++i) {
+        word[i] = word[i+1];
+    }
+    word[3] = a0;
+}
+
+// Key Expansion 2
+// applies S-box substitution to each byte in vector
+void subWord(uint8_t* word) {
+    for (size_t i = 0; i < STATE_SIZE / 4; ++i) {
+        word[i] = sBoxNumbers[word[i]];
+    }
+}
+
+// Key Expansion 3
+// generate key for each iteration of algorithm
+void keyExpansion(state inputKey, uint8_t round) {
+    // save input key
+    state oldKey;
+    memcpy(oldKey, inputKey, 16);
+    
+    // get pointers
+    uint8_t col1[4], col2[4], col3[4], col4[4];
+    uint8_t* col1Pointer = col1;
+    uint8_t* col2Pointer = col2;
+    uint8_t* col3Pointer = col3;
+    uint8_t* col4Pointer = col4;
+    uint8_t* key1Pointer = *inputKey;
+    uint8_t* key2Pointer = *(inputKey + 1);
+    uint8_t* key3Pointer = *(inputKey + 2);
+    uint8_t* key4Pointer = *(inputKey + 3);
+
+    // copy key columns into arrays
+    memcpy(col1Pointer, key1Pointer, 4*sizeof(inputKey[0][0]));
+    memcpy(col2Pointer, key2Pointer, 4*sizeof(inputKey[0][0]));
+    memcpy(col3Pointer, key3Pointer, 4*sizeof(inputKey[0][0]));
+    memcpy(col4Pointer, key4Pointer, 4*sizeof(inputKey[0][0]));
+    
+    // copy col4 into RconTemp, used for intermediate processing
+    uint8_t RconTemp[4];
+    memcpy(RconTemp, col4, 4);
+    
+    // rotate lowest column
+    rotateWord(RconTemp);
+    
+    // S-box substitute
+    subWord(RconTemp);
+    
+    // get round's Rcon value
+    uint8_t currentRcon[4];
+    memcpy(currentRcon, Rcon[round], 4);
+    
+    // col4 = col4 XOR currentRcon
+    wordXOR(RconTemp, currentRcon);
+    
+    // col1 = col1 XOR col4
+    wordXOR(col1, RconTemp);
+    
+    // col2 = col2 XOR col1
+    wordXOR(col2, col1);
+    
+    // col3 = col3 XOR col2
+    wordXOR(col3, col2);
+    
+    // col4 = old col4 XOR col3
+    wordXOR(col4, col3);
+    
+//    for (size_t i = 0; i < 4; ++i) {
+//        printf("%x\n", col3[i]);
+//    }
+
+    // copy results into key
+    memcpy(key1Pointer, col1Pointer, 4*sizeof(inputKey[0][0]));
+    memcpy(key2Pointer, col2Pointer, 4*sizeof(inputKey[0][0]));
+    memcpy(key3Pointer, col3Pointer, 4*sizeof(inputKey[0][0]));
+    memcpy(key4Pointer, col4Pointer, 4*sizeof(inputKey[0][0]));
 }
 
 
@@ -174,33 +281,42 @@ int main(int argc, const char * argv[]) {
 //    state shift = {{0xd4, 0x27, 0x11, 0xae}, {0xe0, 0xbf, 0x98, 0xf1}, {0xb8, 0xb4, 0x5d, 0xe5}, {0x1e, 0x41, 0x52, 0x30}};
 //    state mult = {{0xd4, 0xbf, 0x5d, 0x30},{0xe0, 0xb4, 0x52, 0xae}, {0xb8, 0x41, 0x11, 0xf1}, {0x1e, 0x27, 0x98, 0xe5}};
     
-    printf("%s", "plaintext\n");
-    printState(plaintext);
-    printf("\n");
-
-    printf("%s", "key\n");
-    printState(key);
-    printf("\n");
-
-    printf("%s", "plaintext XOR key\n");
+    // round 1
+    // plaintext = plaintext XOR first round key
     stateXOR(plaintext, key);
-    printState(plaintext);
-    printf("\n");
-
-    printf("%s", "subBytes\n");
-    subBytes(plaintext);
-    printState(plaintext);
-    printf("\n");
-
-    printf("%s", "shiftRows\n");
-    shiftRows(plaintext);
-    printState(plaintext);
-    printf("\n");
     
-    printf("%s", "mixColumns\n");
-    mixColumns(plaintext);
+    // run 9 rounds of AES algorithm
+    for (uint8_t i = 0; i < 9; ++i) {
+        // perform subBytes on state
+        subBytes(plaintext);
+        
+        // perform shiftRows on state
+        shiftRows(plaintext);
+        
+        // perform mixColumns on state
+        mixColumns(plaintext);
+        
+        // perform keyExpansion on key
+        keyExpansion(key, i);
+        
+        // state = state XOR key
+        stateXOR(plaintext, key);
+    }
+    
+    // round 10
+    // perform subBytes on state
+    subBytes(plaintext);
+
+    // perform shiftRows on state
+    shiftRows(plaintext);
+    
+    // perform keyExpansion on key
+    keyExpansion(key, 9);
+
+    // state = state XOR key
+    stateXOR(plaintext, key);
+
     printState(plaintext);
-    printf("\n");
     
     return 0;
 }
